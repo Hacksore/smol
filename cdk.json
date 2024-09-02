@@ -1,5 +1,5 @@
 {
-  "app": "npx tsx bin/smol.ts",
+  "app": "npx tsx src/minecraft.ts",
   "watch": {
     "include": [
       "**"
