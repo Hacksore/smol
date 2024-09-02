@@ -1,10 +1,8 @@
-/* eslint-disable import/no-extraneous-dependencies */
 import { App, Stack, StackProps } from "aws-cdk-lib";
 import { Port } from "aws-cdk-lib/aws-ec2";
 import { Protocol } from "aws-cdk-lib/aws-ecs";
-import { Topic } from "aws-cdk-lib/aws-sns";
 import { Construct } from "constructs";
-import { VPCResources, ECSResources, Route53Resources } from "./index.js";
+import { VPCResources, ECSResources } from "./index.js";
 
 interface MinecraftProps extends StackProps {
   minecraftEdition: string;
@@ -13,7 +11,6 @@ interface MinecraftProps extends StackProps {
   hostedZoneId: string;
   memorySize: string;
   cpuSize: string;
-  snsEmail?: string;
   startupMin: string;
   shutdownMin: string;
   debug: string;
@@ -55,21 +52,21 @@ export class Minecraft extends Stack {
       ingressRule: serverConfig.ingressRule,
     });
 
-    const route53 = new Route53Resources(this, "Route53Resources", {
-      hostedZoneId: props.hostedZoneId,
-      serverSubDomain: props.serverSubDomain,
-      domain: props.domain,
-    });
+    // const route53 = new Route53Resources(this, "Route53Resources", {
+    //   hostedZoneId: props.hostedZoneId,
+    //   serverSubDomain: props.serverSubDomain,
+    //   domain: props.domain,
+    // });
 
     const ecsResources = new ECSResources(this, "ECSResources", {
       memorySize: props.memorySize,
       cpuSize: props.cpuSize,
       vpc: vpcResources.vpc,
       securityGroup: vpcResources.securityGroup,
-      serverSubDomain: props.serverSubDomain,
-      domain: props.domain,
+      // serverSubDomain: props.serverSubDomain,
+      // domain: props.domain,
       hostedZoneId: props.hostedZoneId,
-      subDomainHostedZoneId: route53.subDomainZoneId,
+      // subDomainHostedZoneId: route53.subDomainZoneId,
       minecraftEdition: props.minecraftEdition,
       startupMin: props.startupMin,
       shutdownMin: props.shutdownMin,
@@ -93,7 +90,6 @@ const stackProps = {
   hostedZoneId: process.env.HOSTED_ZONE_ID || "Z00000000000000000000",
   memorySize: process.env.MEMORY_SIZE || "8192",
   cpuSize: process.env.CPU_SIZE || "4096",
-  snsEmail: process.env.SNS_EMAIL || "",
   startupMin: process.env.STARTUP_MIN || "10",
   shutdownMin: process.env.SHUTDOWN_MIN || "20",
   debug: process.env.DEBUG || "false",

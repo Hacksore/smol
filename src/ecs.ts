@@ -1,5 +1,5 @@
 import path from "path";
-import { RemovalPolicy } from "aws-cdk-lib";
+import { CfnOutput, RemovalPolicy } from "aws-cdk-lib";
 import { SubnetType, Vpc, SecurityGroup } from "aws-cdk-lib/aws-ec2";
 import {
   AwsLogDriver,
@@ -19,26 +19,22 @@ import {
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
 import { RetentionDays } from "aws-cdk-lib/aws-logs";
-import { Topic } from "aws-cdk-lib/aws-sns";
 import { Construct } from "constructs";
 import { ServerConfig } from "./minecraft.js";
-
-const __dirname = new URL(".", import.meta.url).pathname;
 
 interface ECSResourcesProps {
   vpc: Vpc;
   securityGroup: SecurityGroup;
-  serverSubDomain: string;
-  domain: string;
+  // serverSubDomain: string;
+  // domain: string;
   hostedZoneId: string;
   memorySize: string;
   cpuSize: string;
   minecraftEdition: string;
-  snsTopic?: Topic;
   startupMin: string;
   shutdownMin: string;
   serverConfig: ServerConfig;
-  subDomainHostedZoneId: string;
+  // subDomainHostedZoneId: string;
 }
 
 export class ECSResources extends Construct {
@@ -127,7 +123,7 @@ export class ECSResources extends Construct {
       ],
       taskDefinition: this.task,
       assignPublicIp: true,
-      desiredCount: 0,
+      desiredCount: 1,
       vpcSubnets: { subnetType: SubnetType.PUBLIC },
       securityGroups: [props.securityGroup],
       enableExecuteCommand: true,
@@ -148,7 +144,7 @@ export class ECSResources extends Construct {
             protocol: props.serverConfig.protocol,
           },
         ],
-        essential: false,
+        essential: true,
         logging: props.serverConfig.debug
           ? new AwsLogDriver({
             logRetention: RetentionDays.THREE_DAYS,
@@ -162,28 +158,6 @@ export class ECSResources extends Construct {
       containerPath: "/data",
       sourceVolume: "minecraft",
       readOnly: false,
-    });
-
-    this.task.addContainer("WatchdogContainer", {
-      image: ContainerImage.fromAsset(
-        path.resolve(__dirname, "./resources/watchdogContainer"),
-      ),
-      essential: true,
-      environment: {
-        CLUSTER: this.cluster.clusterName,
-        SERVICE: "MineCraftService",
-        DNSZONE: props.subDomainHostedZoneId,
-        SERVERNAME: `${props.serverSubDomain}.${props.domain}`,
-        SNSTOPIC: props.snsTopic?.topicArn || "",
-        STARTUPMIN: props.startupMin,
-        SHUTDOWNMIN: props.shutdownMin,
-      },
-      logging: props.serverConfig.debug
-        ? new AwsLogDriver({
-          logRetention: RetentionDays.THREE_DAYS,
-          streamPrefix: "minecraft",
-        })
-        : undefined,
     });
 
     const serverPolicy = new Policy(this, "ServerPolicy", {
@@ -202,20 +176,6 @@ export class ECSResources extends Construct {
         new PolicyStatement({
           actions: ["ec2:DescribeNetworkInterfaces"],
           resources: ["*"],
-        }),
-        new PolicyStatement({
-          actions: ["sns:Publish"],
-          resources: [props.snsTopic?.topicArn || ""],
-        }),
-        new PolicyStatement({
-          actions: [
-            "route53:GetHostedZone",
-            "route53:ChangeResourceRecordSets",
-            "route53:ListResourceRecordSets",
-          ],
-          resources: [
-            `arn:aws:route53:::hostedzone/${props.subDomainHostedZoneId}`,
-          ],
         }),
       ],
     });
